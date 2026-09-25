@@ -1,0 +1,11 @@
+{
+  "domain": "uptime_checker",
+  "name": "uptime-checker",
+  "codeowners": [
+    "@mwallace"
+  ],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "requirements": ["icmplib>=3.0"],
+  "version": "0.1.0"
+}
