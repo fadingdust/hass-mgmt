@@ -1,8 +1,6 @@
 """Binary sensor platform for uptime_checker."""
 from __future__ import annotations
 
-import logging
-
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -14,8 +12,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import UptimeGroupCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -37,20 +33,6 @@ class UptimeGroupBinarySensor(
         self._attr_name = entry.data["name"]
         self._attr_unique_id = f"{entry.entry_id}_uptime"
 
-    def _handle_coordinator_update(self) -> None:
-        _LOGGER.debug(
-            "uptime_checker entity %s notified by coordinator; data=%s",
-            self.entity_id,
-            self.coordinator.data,
-        )
-        super()._handle_coordinator_update()
-        state_after = self.hass.states.get(self.entity_id)
-        _LOGGER.debug(
-            "uptime_checker entity %s state immediately after write: last_reported=%s",
-            self.entity_id,
-            state_after.last_reported if state_after else "MISSING",
-        )
-
     @property
     def is_on(self) -> bool:
         return bool(self.coordinator.data["is_up"])
@@ -60,5 +42,6 @@ class UptimeGroupBinarySensor(
         return {
             "up_count": self.coordinator.data["up_count"],
             "total": self.coordinator.data["total"],
+            "average_rtt_ms": self.coordinator.data["average_rtt_ms"],
             "targets": self.coordinator.data["targets"],
         }

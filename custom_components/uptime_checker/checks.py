@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import socket
+import time
+from typing import NamedTuple
 
 import aiohttp
 from icmplib import async_ping
@@ -10,33 +12,44 @@ from icmplib import async_ping
 DEFAULT_TIMEOUT = 5.0
 
 
-async def check_ping(address: str, timeout: float = DEFAULT_TIMEOUT) -> bool:
+class CheckResult(NamedTuple):
+    is_up: bool
+    rtt_ms: float | None
+
+
+async def check_ping(address: str, timeout: float = DEFAULT_TIMEOUT) -> CheckResult:
     try:
         host = await async_ping(address, count=1, timeout=timeout, privileged=False)
-        return bool(host.is_alive)
+        if host.is_alive:
+            return CheckResult(True, host.avg_rtt)
+        return CheckResult(False, None)
     except Exception:
-        return False
+        return CheckResult(False, None)
 
 
-async def check_dns(address: str, timeout: float = DEFAULT_TIMEOUT) -> bool:
+async def check_dns(address: str, timeout: float = DEFAULT_TIMEOUT) -> CheckResult:
+    start = time.monotonic()
     try:
         await asyncio.wait_for(
             asyncio.to_thread(socket.getaddrinfo, address, None), timeout=timeout
         )
-        return True
+        return CheckResult(True, (time.monotonic() - start) * 1000)
     except Exception:
-        return False
+        return CheckResult(False, None)
 
 
-async def check_http(address: str, timeout: float = DEFAULT_TIMEOUT) -> bool:
+async def check_http(address: str, timeout: float = DEFAULT_TIMEOUT) -> CheckResult:
+    start = time.monotonic()
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 address, timeout=aiohttp.ClientTimeout(total=timeout)
             ) as response:
-                return response.status < 500
+                elapsed_ms = (time.monotonic() - start) * 1000
+                is_up = response.status < 500
+                return CheckResult(is_up, elapsed_ms if is_up else None)
     except Exception:
-        return False
+        return CheckResult(False, None)
 
 
 CHECK_FUNCS = {

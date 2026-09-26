@@ -27,11 +27,20 @@ def parse_targets(raw: str) -> list[dict[str, str]]:
     return targets
 
 
-def compute_group_status(target_status: dict[str, bool], min_up: int) -> dict:
-    up_count = sum(1 for ok in target_status.values() if ok)
+def compute_group_status(target_status: dict[str, tuple], min_up: int) -> dict:
+    up_count = sum(1 for result in target_status.values() if result[0])
+    rtts = [
+        result[1]
+        for result in target_status.values()
+        if result[0] and result[1] is not None
+    ]
     return {
         "up_count": up_count,
         "total": len(target_status),
         "is_up": up_count >= min_up,
-        "targets": dict(target_status),
+        "average_rtt_ms": sum(rtts) / len(rtts) if rtts else None,
+        "targets": {
+            key: {"up": result[0], "rtt_ms": result[1]}
+            for key, result in target_status.items()
+        },
     }

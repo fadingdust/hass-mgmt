@@ -23,11 +23,11 @@ class UptimeGroupCoordinator(DataUpdateCoordinator):
         min_up: int,
         scan_interval: int,
     ) -> None:
-        # always_update=True: without it, DataUpdateCoordinator skips
-        # notifying entities (and bumping last_reported) whenever a fetch
-        # returns data equal to the previous fetch. For an uptime monitor,
-        # repeated "still up"/"still down" results are the common case and
-        # still need to be reported as fresh, or the entity looks frozen.
+        # always_update=True: semantically correct for an uptime monitor —
+        # repeated "still up"/"still down" results are still fresh reports.
+        # Per-target RTT (see checks.py) also means fetch results almost
+        # never compare equal cycle-to-cycle, so external API/UI views of
+        # last_reported stay live rather than freezing on cached state.
         super().__init__(
             hass,
             _LOGGER,
@@ -46,7 +46,7 @@ class UptimeGroupCoordinator(DataUpdateCoordinator):
             )
         )
         target_status = {
-            f"{target['type']}:{target['address']}": ok
-            for target, ok in zip(self.targets, results)
+            f"{target['type']}:{target['address']}": result
+            for target, result in zip(self.targets, results)
         }
         return compute_group_status(target_status, self.min_up)
